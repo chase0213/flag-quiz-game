@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Smile, Frown } from 'lucide-react';
 import { AllCountries } from '@/consts/flags';
 
-const difficultySettings = {
+const difficultySettings: any = {
   easy: { countries: AllCountries.filter(c => c.difficulty === 'easy'), optionsCount: 3, questionCount: 10 },
   medium: { countries: AllCountries.filter(c => ['easy', 'medium'].includes(c.difficulty)), optionsCount: 4, questionCount: 15 },
   hard: { countries: AllCountries, optionsCount: 5, questionCount: 20 },
@@ -14,8 +14,8 @@ const difficultySettings = {
 
 const FlagQuizGame = () => {
   const [difficulty, setDifficulty] = useState('easy');
-  const [currentFlag, setCurrentFlag] = useState({});
-  const [options, setOptions] = useState([]);
+  const [currentFlag, setCurrentFlag] = useState<any>({});
+  const [options, setOptions] = useState<any[]>([]);
   const [score, setScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
@@ -23,19 +23,19 @@ const FlagQuizGame = () => {
   const [questionNumber, setQuestionNumber] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-  const correctSoundRef = useRef(null);
-  const incorrectSoundRef = useRef(null);
+  const correctSoundRef = useRef<any>(null);
+  const incorrectSoundRef = useRef<any>(null);
 
   useEffect(() => {
     correctSoundRef.current = new Audio('/audio/correct-sound.mp3');
     incorrectSoundRef.current = new Audio('/audio/incorrect-sound.mp3');
   }, []);
 
-  const playSound = useCallback((isCorrect) => {
+  const playSound = useCallback((isCorrect: boolean) => {
     const sound = isCorrect ? correctSoundRef.current : incorrectSoundRef.current;
     if (sound) {
       sound.currentTime = 0;
-      sound.play().catch(error => console.error('Error playing sound:', error));
+      sound.play().catch((error: any) => console.error('Error playing sound:', error));
     }
   }, []);
 
@@ -65,7 +65,7 @@ const FlagQuizGame = () => {
     }
   }, [gameStarted, newQuestion, isTransitioning]);
 
-  const handleAnswer = useCallback((answer) => {
+  const handleAnswer = useCallback((answer:any) => {
     if (isTransitioning) return;
 
     const correct = answer === currentFlag.yomikata;
@@ -86,7 +86,7 @@ const FlagQuizGame = () => {
     }
   }, [currentFlag.yomikata, questionNumber, difficulty, newQuestion, playSound]);
 
-  const startGame = useCallback((selectedDifficulty) => {
+  const startGame = useCallback((selectedDifficulty:string) => {
     setDifficulty(selectedDifficulty);
     setGameStarted(true);
     setQuestionNumber(0);
