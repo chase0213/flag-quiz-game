@@ -1,113 +1,180 @@
-import Image from "next/image";
+'use client'
 
-export default function Home() {
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Smile, Frown } from 'lucide-react';
+import { AllCountries } from '@/consts/flags';
+
+const difficultySettings = {
+  easy: { countries: AllCountries.filter(c => c.difficulty === 'easy'), optionsCount: 3, questionCount: 10 },
+  medium: { countries: AllCountries.filter(c => ['easy', 'medium'].includes(c.difficulty)), optionsCount: 4, questionCount: 15 },
+  hard: { countries: AllCountries, optionsCount: 5, questionCount: 20 },
+};
+
+const FlagQuizGame = () => {
+  const [difficulty, setDifficulty] = useState('easy');
+  const [currentFlag, setCurrentFlag] = useState({});
+  const [options, setOptions] = useState([]);
+  const [score, setScore] = useState(0);
+  const [showResult, setShowResult] = useState(false);
+  const [isCorrect, setIsCorrect] = useState(false);
+  const [gameStarted, setGameStarted] = useState(false);
+  const [questionNumber, setQuestionNumber] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  const correctSoundRef = useRef(null);
+  const incorrectSoundRef = useRef(null);
+
+  useEffect(() => {
+    correctSoundRef.current = new Audio('/audio/correct-sound.mp3');
+    incorrectSoundRef.current = new Audio('/audio/incorrect-sound.mp3');
+  }, []);
+
+  const playSound = useCallback((isCorrect) => {
+    const sound = isCorrect ? correctSoundRef.current : incorrectSoundRef.current;
+    if (sound) {
+      sound.currentTime = 0;
+      sound.play().catch(error => console.error('Error playing sound:', error));
+    }
+  }, []);
+
+  const newQuestion = useCallback(() => {
+    if (questionNumber >= difficultySettings[difficulty].questionCount) {
+      setGameStarted(false);
+      return;
+    }
+
+    const { countries, optionsCount } = difficultySettings[difficulty];
+    const shuffledCountries = [...countries].sort(() => 0.5 - Math.random());
+    const questionCountries = shuffledCountries.slice(0, optionsCount);
+    const correctAnswer = questionCountries[Math.floor(Math.random() * questionCountries.length)];
+
+    setCurrentFlag(correctAnswer);
+    setOptions(questionCountries.map(country => country.yomikata));
+    setShowResult(false);
+    setIsTransitioning(false);
+    setQuestionNumber(prev => prev + 1);
+  }, [difficulty, questionNumber]);
+
+  useEffect(() => {
+    if (gameStarted && !isTransitioning) {
+      setQuestionNumber(0);
+      setScore(0);
+      newQuestion();
+    }
+  }, [gameStarted, newQuestion, isTransitioning]);
+
+  const handleAnswer = useCallback((answer) => {
+    if (isTransitioning) return;
+
+    const correct = answer === currentFlag.yomikata;
+    setIsCorrect(correct);
+    setShowResult(true);
+    setIsTransitioning(true);
+    playSound(correct);
+
+    if (correct) {
+      setScore(prevScore => prevScore + 1);
+      setTimeout(() => {
+        if (questionNumber >= difficultySettings[difficulty].questionCount) {
+          setGameStarted(false);
+        } else {
+          newQuestion();
+        }
+      }, 2000);
+    }
+  }, [currentFlag.yomikata, questionNumber, difficulty, newQuestion, playSound]);
+
+  const startGame = useCallback((selectedDifficulty) => {
+    setDifficulty(selectedDifficulty);
+    setGameStarted(true);
+    setQuestionNumber(0);
+    setScore(0);
+    setIsTransitioning(false);
+  }, []);
+
+  if (!gameStarted) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-blue-100 to-blue-200 p-4">
+        <h1 className="text-4xl font-bold mb-8 text-blue-600">こくき クイズ</h1>
+        <Card className="w-full max-w-md p-6 bg-white rounded-xl shadow-lg">
+          <h2 className="text-2xl font-semibold mb-4 text-center">むずかしさを えらんでね</h2>
+          <div className="grid grid-cols-1 gap-4">
+            <Button onClick={() => startGame('easy')} className="text-xl py-3 bg-green-500 hover:bg-green-600">かんたん (10もん)</Button>
+            <Button onClick={() => startGame('medium')} className="text-xl py-3 bg-yellow-500 hover:bg-yellow-600">ふつう (15もん)</Button>
+            <Button onClick={() => startGame('hard')} className="text-xl py-3 bg-red-500 hover:bg-red-600">むずかしい (20もん)</Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:size-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-blue-100 to-blue-200 p-4">
+      <h1 className="text-4xl font-bold mb-8 text-blue-600">こくき クイズ</h1>
+      <Card className="w-full max-w-md p-6 bg-white rounded-xl shadow-lg transform transition-all hover:scale-105">
+        <div className="text-center">
+          {!showResult ? (
+            <>
+              <p className="text-2xl mb-4 font-semibold text-gray-700">このこくきは どこのくに？</p>
+              <p className="text-9xl mb-8">{currentFlag.flag}</p>
+              <div className="grid grid-cols-1 gap-4">
+                {options.map((option, index) => (
+                  <Button
+                    key={index}
+                    onClick={() => handleAnswer(option)}
+                    className="text-xl py-4 px-6 rounded-full transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-md bg-blue-500 hover:bg-blue-600"
+                    disabled={isTransitioning}
+                  >
+                    {option}
+                  </Button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="mt-8 animate-fade-in-down">
+              {isCorrect ? (
+                <div className="flex flex-col items-center justify-center text-green-500">
+                  <Smile size={80} className="mb-4" />
+                  <p className="text-5xl font-bold mb-4">せいかい！</p>
+                  <p className="text-2xl">つぎのもんだいに すすみます</p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center text-red-500">
+                  <Frown size={80} className="mb-4" />
+                  <p className="text-4xl font-bold mb-4">ざんねん...</p>
+                  <p className="text-2xl mb-4">こたえ: {currentFlag.yomikata}</p>
+                  <Button
+                    onClick={newQuestion}
+                    className="mt-6 text-xl bg-purple-500 hover:bg-purple-600 transition-all duration-300 ease-in-out transform hover:scale-105 rounded-full py-3 px-8"
+                  >
+                    つぎのもんだい
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
+      </Card>
+      <div className="mt-8 text-center">
+        <p className="text-3xl font-bold text-blue-700">とくてん: {score}</p>
+        <p className="text-xl text-blue-600">{questionNumber} / {difficultySettings[difficulty].questionCount}</p>
       </div>
-
-      <div className="relative z-[-1] flex place-items-center before:absolute before:h-[300px] before:w-full before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 sm:before:w-[480px] sm:after:w-[240px] before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-balance text-sm opacity-50">
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+      {!gameStarted && questionNumber > 0 && (
+        <div className="mt-8 text-center">
+          <h2 className="text-3xl font-bold text-green-600">クイズ おわり！</h2>
+          <p className="text-2xl mt-4">さいしゅうてん: {score}</p>
+          <Button
+            onClick={() => setGameStarted(false)}
+            className="mt-6 text-xl bg-blue-500 hover:bg-blue-600 transition-all duration-300 ease-in-out transform hover:scale-105 rounded-full py-3 px-8"
+          >
+            さいしょにもどる
+          </Button>
+        </div>
+      )}
+    </div>
   );
-}
+};
+
+export default FlagQuizGame;
